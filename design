@@ -1,0 +1,90 @@
+what is it
+--
+lurkr is a realtime irc log.
+
+it connects to irc networks and joins channels, then relays their activities
+to people connected to a websocket at baseurl/network/channel.
+
+data
+--
+the current logfile is plain text on disk, appended to as channel traffic
+happens
+
+when the logfile reaches a certain size, it is archived (gzip). If someone
+wants to see back past the current logfile, they get the gzipped archive
+statically with transfer-encoding gzip.
+
+Server has a data directory:
+    data/
+        moose/
+            info.json
+            current
+            1001200.log
+            1001231.log
+        moose-dev/
+        flea/
+
+search
+--
+A separate search client (leveraging liblurkr or whatever): you feed it
+information about channel api endpoints, it indexes and gives results.
+
+irc
+--
+bot joins with preconfigured nick, maybe runs a user script (/msg nickserv
+identify blah?), talks to socket.io and writes to disk.
+
+federation
+--
+Code is open source, organizations (moose cabal, perl 6 cabal, etc) are
+encouraged to run endpoints for channels relating to their organization.
+
+Individual hackers can have their set-of-watched-channels for their lurkr
+instance, that's cool. But maybe they'll utilize #moose's infrastructure too.
+
+Clients talk to things like:  http://moose.org/lurkr/moose,
+http://moose.org/lurkr/moose-dev, http://perl6.org/lurkr/freenode,
+http://perl6.org/lurkr/magnet, http://lurks.frodwith.net/flea
+
+Searcher is a client. Web interface is a client. Maybe a macgap application
+could be a client. Or an iphone app. Whatever!
+
+API
+--
+
+lurkr.frodwith.net
+    serves up the web client.
+    Bookmarkable (hashtag) urls would be nice (just a list of api endpoints)
+
+GET api
+    [
+        "moose",
+        "moose-dev"
+    ]
+
+GET api/moose
+    {
+        "host": "irc.perl.org",
+        "port": 6667,
+        "channel" : "#moose"
+    }
+
+GET api/moose/archive
+    [
+        10000123,
+        10001313,
+        48918492
+    ]
+
+GET api/moose/archive/10000123
+    Transfer-Encoding: gzip
+    # newline-separated json, stored gzipped on disk
+    { "timestamp": 100000100, "sender": "frodwith", "message": "hello" }
+    { "timestamp": 100000101, "sender": "frodwith", "message": "there" }
+    { "timestamp": 100000102, "sender": "frodwith", "message": "friend" }
+
+GET api/moose/current
+    (see archive, but no gzipping)
+
+io.connect("api/moose/live")
+    You get those little bits of json as emit events, live as they happen.
