@@ -3,6 +3,7 @@ path = require 'path'
 express = require 'express'
 irc = require 'irc'
 events = require 'events'
+child = require 'child_process'
 
 class Lurkr extends events.EventEmitter
     constructor: ({@data}) ->
@@ -16,19 +17,49 @@ class Lurkr extends events.EventEmitter
         fs.mkdir chandir, 0755, (err) =>
             curfile = path.join chandir, 'current'
             stream = fs.createWriteStream curfile, {flags: 'a'}
-            str = JSON.stringify
-                message   : msg.message
-                sender    : msg.sender
-                timestamp : msg.timestamp
-            stream.write "#{str}\n"
+            str = [msg.timestamp, msg.sender, msg.message].join("\t")
+
+            stream.on 'close', ->
+                fs.stat curfile, (err, stats) ->
+                    if stats.size > 8192
+                        newfile = path.join chandir, Date.now().toString()
+                        fs.rename curfile, newfile, (err) ->
+                            console.warn(err) if err
+                            child.exec "gzip #{newfile}"
+
+            stream.end "#{str}\n"
 
     route: ->
         @config (err, cfg) =>
             @app.get '/', (req, res) =>
                 res.json Object.keys(cfg.channels)
+
+            @app.get '/:chan/archive', (req, res) =>
+                dir = path.join @data, req.params.chan
+                res.header 'Content-Type', 'text/plain'
+                fs.readdir dir, (err, files) =>
+                    if err and err.code is 'ENOENT'
+                        res.send 404
+                    else if err
+                        res.send 500
+                        console.warn err
+                    else
+                        for f in files
+                            if matches = f.match /^(\d+)\.gz$/
+                                res.write "#{matches[1]}\n"
+                        res.end()
+
+            @app.get '/:chan/archive/:timestamp', (req, res) =>
+                p = req.params
+                archive = path.join @data, p.chan, p.timestamp + '.gz'
+                res.header 'Content-Encoding', 'gzip'
+                res.header 'Content-Type', 'text/plain'
+                res.sendfile archive
+
             @app.get '/:chan/current', (req, res) =>
-                path = path.join @data, req.params.chan, 'current'
-                res.sendfile path
+                curfile = path.join @data, req.params.chan, 'current'
+                res.header 'Content-Type', 'text/plain'
+                res.sendfile curfile
     
     # read the config file once (json blob) and pass it to cb
     config: (cb) ->
