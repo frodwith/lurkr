@@ -12,6 +12,12 @@ class Lurkr extends events.EventEmitter
         @route()
         @on 'chat', (msg) => @log(msg)
 
+    path: ->
+        base = @app.set('basepath') || @app.route
+        parts = Array.prototype.slice.call(arguments)
+        parts.unshift(base.replace /\/$/, '')
+        parts.join '/'
+
     log: (msg) ->
         chandir = path.join @data, msg.channel
         fs.mkdir chandir, 0755, (err) =>
@@ -32,7 +38,16 @@ class Lurkr extends events.EventEmitter
     route: ->
         @config (err, cfg) =>
             @app.get '/', (req, res) =>
-                res.json Object.keys(cfg.channels)
+                result = {}
+                for k, v of cfg.channels
+                    result[k] = @path k
+                res.send result
+
+            @app.get '/:chan', (req, res) =>
+                chan = req.params.chan
+                res.send
+                    archive: @path chan, 'archive'
+                    current: @path chan, 'current'
 
             @app.get '/:chan/archive', (req, res) =>
                 dir = path.join @data, req.params.chan
