@@ -1,0 +1,25 @@
+.log {
+    font-family: monospace;
+    margin: 0 auto;
+    width: 800px;
+    border: thin solid black;
+}
+
+.log .more {
+    cursor: pointer;
+}
+
+.log .message {
+    width: 80em;
+}
+
+.log .timestamp {
+    width: 5em;
+    vertical-align: top;
+}
+
+.log .nick {
+    vertical-align: top;
+    white-space: nowrap;
+    padding-right: 1em;
+}
