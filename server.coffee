@@ -118,7 +118,7 @@ class Lurkr extends events.EventEmitter
             n = o.network
             clients[n] or=
                 net: @config.networks[n]
-                channels: []
+                channels: {}
 
             clients[n].channels[o.channel] = k
 
