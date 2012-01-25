@@ -1,0 +1,23 @@
+{
+    "host"  : "localhost",
+    "port"  : 3000,
+
+    "networks": {
+        "freenode" : {
+            "host" : "irc.freenode.net",
+            "port" : 6667,
+            "nick" : "lurkrbot"
+        }
+    },
+
+    "channels": {
+        "lurkr" : {
+            "network": "freenode",
+            "channel": "#lurkr"
+        },
+        "lurkr2" : {
+            "network": "freenode",
+            "channel": "#lurkr2"
+        }
+    }
+}
