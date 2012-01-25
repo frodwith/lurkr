@@ -1,25 +1,66 @@
-.log {
+body {
+    padding: 0;
+    margin: 0;
+}
+
+#container {
     font-family: monospace;
+}
+
+#tab-buttons {
+    margin: 0;
+    padding: 0;
+}
+
+#tab-content {
+    overflow: auto;
+}
+
+.log {
     margin: 0 auto;
-    width: 800px;
+    width: 95%;
     border: thin solid black;
+    vertical-align: top;
 }
 
-.log .more {
+.tab {
+    display: none;
+}
+
+.tab.active {
+    display: block;
+}
+
+.tab-title {
+    display: inline-block;
+    padding: 1em;
+    background-color: #eee;
+    color: #aaa;
+}
+
+.tab-title.active {
+    background-color: white;
+    color: black;
+}
+
+.tab-title, .tab .more {
+    text-align: center;
     cursor: pointer;
+	-webkit-border-radius: .5em;
+	-moz-border-radius: .5em;
+	border-radius: .5em;
+	-webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+	-moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+	box-shadow: 0 1px 2px rgba(0,0,0,.2);
 }
 
-.log .message {
-    width: 80em;
+.tab .more {
+    margin: .5em auto;
+    width: 10em;
 }
 
-.log .timestamp {
-    width: 5em;
-    vertical-align: top;
-}
-
-.log .nick {
-    vertical-align: top;
+.log .timestamp, .log .nick {
     white-space: nowrap;
     padding-right: 1em;
+    width: 1px;
 }

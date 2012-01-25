@@ -114,6 +114,7 @@ class Lurkr extends events.EventEmitter
         clients = {}
 
         for k, o of @config.channels
+            @io.of("/#{k}").emit 'power on'
             n = o.network
             clients[n] or=
                 net: @config.networks[n]
