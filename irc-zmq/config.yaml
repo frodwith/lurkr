@@ -1,0 +1,11 @@
+zmq:
+    interface : '127.0.0.1'
+    port      : 6668
+
+irc:
+    - host     : irc.freenode.net
+      post     : 6667
+      channels :
+        - lurkr
+        - name:    something_unrelated
+          channel: '#lurkr2'

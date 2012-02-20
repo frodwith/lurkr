@@ -1,0 +1,5 @@
+bridge:
+    host: '127.0.0.1'
+    port: 6668
+
+data: '/Users/pdriver/code/lurkr/new-data'
