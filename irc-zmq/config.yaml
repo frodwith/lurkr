@@ -1,7 +1,5 @@
-zmq:
-    interface : '127.0.0.1'
-    port      : 6668
-
+live: "tcp://127.0.0.1:6668"
+info: "tcp://127.0.0.1:8666"
 irc:
     - host     : irc.freenode.net
       post     : 6667

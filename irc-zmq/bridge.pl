@@ -9,19 +9,40 @@ use ZeroMQ qw(:all);
 
 my $config  = LoadFile('config.yaml');
 my %clients;
+my ($info_watcher, $info_json, $botstamp, %bot_info);
 
 {
-    my $context   = ZeroMQ::Context->new;
-    my $sock      = $context->socket(ZMQ_PUB);
-    my $zmq       = $config->{zmq};
-    my $interface = $zmq->{interface} || '127.0.0.1';
-    my $port      = $zmq->{port}      || '6668';
-    $sock->bind("tcp://$interface:$port");
+    my $context = ZeroMQ::Context->new;
+    {
+        my $live = $context->socket(ZMQ_PUB);
+        $live->bind($config->{live} || 'tcp://127.0.0.1:6668');
+        sub notify {
+            my %args = @_;
+            $args{timestamp} = time();
+            $live->send(encode_json \%args);
+        }
+    }
 
-    sub notify {
-        my %args = @_;
-        $args{timestamp} = time();
-        $sock->send(encode_json \%args);
+    {
+        my $info = $context->socket(ZMQ_REP);
+        $info->bind($config->{info} || 'tcp://127.0.0.1:8666');
+
+        my %dispatch = (
+            'timestamp' => sub { $botstamp },
+            'channels'  => sub { $info_json },
+        );
+
+        sub respond {
+            $info_watcher = AE::io $info->getsockopt(ZMQ_FD), 0, sub {
+                while (my $msg = $info->recv) {
+                    my $respond  = $dispatch{$msg->data};
+                    my $response = $respond
+                        ? $respond->()
+                        : '{"error":"bad request"}';
+                    $info->send($response);
+                }
+            };
+        }
     }
 }
 
@@ -30,11 +51,18 @@ for my $spec (@{ $config->{irc} }) {
     my $nick = $spec->{nick} ||= 'capnbridgr';
     my %channels;
     for my $entry (@{ $spec->{channels} }) {
+        # normalizing the just-a-string case
         $entry = { name => $entry, channel => "\#$entry" }
             unless ref $entry eq 'HASH';
+
         $channels{ $entry->{channel} } = $entry->{name};
+
+        # so we can report to info clients what we're listening to
+        my %info = (channel => $entry->{channel});
+        @info{qw(host nick port)} = @{$spec}{qw(host nick port)};
+        $bot_info{ $entry->{name} } = \%info;
     }
-    my $client   = AnyEvent::IRC::Client->new;
+    my $client = AnyEvent::IRC::Client->new;
     $client->reg_cb(
         registered => sub {
             $client->send_msg(JOIN => "$_") for keys %channels;
@@ -66,9 +94,14 @@ for my $spec (@{ $config->{irc} }) {
     $client->connect($spec->{host}, $port, { nick => $nick });
 }
 
+$botstamp  = encode_json({ timestamp => time() });
+$info_json = encode_json(\%bot_info);
+respond();
 
 AE::cv->wait;
 for my $spec (values %clients) {
     my $msg = $spec->{quit} || 'Shutting down.';
     $spec->{client}->disconnect($msg);
 }
+
+undef $info_watcher;
