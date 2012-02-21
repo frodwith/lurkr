@@ -11,11 +11,8 @@ my $config  = LoadFile('config.yaml');
 my $context = ZeroMQ::Context->new;
 my $socket  = do {
     my $s = $context->socket(ZMQ_SUB);
-    my $c = $config->{bridge};
-    my $host = $c->{host} || '127.0.0.1';
-    my $port = $c->{port} || 6668;
     $s->setsockopt(ZMQ_SUBSCRIBE, '');
-    $s->connect("tcp://$host:$port");
+    $s->connect($config->{bridge} || 'tcp://127.0.0.1:6668');
     $s;
 };
 
