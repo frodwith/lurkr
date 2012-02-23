@@ -1,18 +1,16 @@
 (function() {
   var channels, expand, join, leave, logRows, msgRow, onHash, scroll, select;
+
   this.WEB_SOCKET_SWF_LOCATION = '/socket.io/WebSocketMain.swf';
+
   msgRow = function(_arg) {
     var date, h, m, message, sender, time, timestamp, tr;
     timestamp = _arg.timestamp, sender = _arg.sender, message = _arg.message;
     date = new Date(timestamp);
     h = date.getHours();
-    if (h < 10) {
-      h = '0' + h;
-    }
+    if (h < 10) h = '0' + h;
     m = date.getMinutes();
-    if (m < 10) {
-      m = '0' + m;
-    }
+    if (m < 10) m = '0' + m;
     time = [h, m].join(':');
     tr = $('<tr class="line">');
     $('<td class="timestamp">').text(time).attr('title', date.toString()).appendTo(tr);
@@ -20,6 +18,7 @@
     $('<td class="message">').text(message || ' ').appendTo(tr);
     return tr.get(0);
   };
+
   logRows = function(log) {
     var line, lines, message, result, sender, timestamp, _i, _len, _ref;
     result = [];
@@ -37,7 +36,9 @@
     }
     return result;
   };
+
   channels = {};
+
   leave = function(chan) {
     var k, tab, _results;
     tab = channels[chan];
@@ -53,6 +54,7 @@
       return _results;
     }
   };
+
   join = function(url) {
     var el, more, tab, tbl;
     el = $('<div class=\'tab\'>\n    <div class=\'more\'>More...</div>\n    <table class="log">\n        <caption></caption>\n    </table>\n</div>');
@@ -61,7 +63,7 @@
     tbl = el.find('.log');
     tbl.find('caption').text(url);
     return $.getJSON(url, function(channel) {
-      var socket;
+      var socket, socketInfo;
       $.get(channel.current, function(log) {
         var r;
         tbl.append((function() {
@@ -76,23 +78,35 @@
         })());
         return scroll();
       });
-      socket = io.connect(channel.socket);
-      socket.on('chat', function(data) {
-        var auto;
-        el = $('#tab-content');
-        auto = (el.height() + el.scrollTop()) === el.prop('scrollHeight');
-        tbl.append(msgRow(data));
-        if (auto) {
-          return scroll();
-        }
-      });
-      return $.get(channel.archive, function(unparsed) {
-        var archives, get, updateMore;
-        archives = unparsed.split(/\n/);
-        archives.pop();
+      if (socketInfo = channel.socket) {
+        socket = io.connect(socketInfo.server);
+        join = function() {
+          return socket.emit('join', socketInfo.room);
+        };
+        join();
+        socket.on('reconnect', join);
+        socket.on('chat', function(data) {
+          var auto;
+          el = $('#tab-content');
+          auto = (el.height() + el.scrollTop()) === el.prop('scrollHeight');
+          tbl.append(msgRow(data));
+          if (auto) return scroll();
+        });
+      }
+      return $.getJSON(channel.archive, function(urls) {
+        var archives, get, k, updateMore;
+        archives = (function() {
+          var _results;
+          _results = [];
+          for (k in urls) {
+            _results.push(parseInt(k));
+          }
+          return _results;
+        })();
+        archives.sort();
         get = function() {
           more.unbind('click');
-          return $.get(archives.pop(), function(log) {
+          return $.get(urls[archives.pop()], function(log) {
             var r;
             tbl.prepend(((function() {
               var _i, _len, _ref, _results;
@@ -123,9 +137,7 @@
             var _results;
             _results = [];
             for (k in channels) {
-              if (k !== url) {
-                _results.push(k);
-              }
+              if (k !== url) _results.push(k);
             }
             return _results;
           })();
@@ -140,6 +152,7 @@
       });
     });
   };
+
   select = function(channel) {
     var chan, tab;
     for (chan in channels) {
@@ -154,6 +167,7 @@
     tab.button.addClass('active');
     return scroll();
   };
+
   onHash = function() {
     var chan, set, tab, u, urls, _i, _len, _ref, _results;
     urls = location.hash.replace(/^#/, '');
@@ -161,27 +175,29 @@
     _ref = urls.split(/,/);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       u = _ref[_i];
-      if (u) {
-        set[u] = true;
-      }
+      if (u) set[u] = true;
     }
     for (chan in channels) {
       tab = channels[chan];
-      if (!(chan in set)) {
-        leave(chan);
-      }
+      if (!(chan in set)) leave(chan);
     }
     _results = [];
     for (chan in set) {
-      _results.push(!(chan in channels) ? join(chan) : void 0);
+      if (!(chan in channels)) {
+        _results.push(join(chan));
+      } else {
+        _results.push(void 0);
+      }
     }
     return _results;
   };
+
   expand = function() {
     var el;
     el = $('#tab-content');
     return el.height($(window).height() - el.position().top);
   };
+
   scroll = function() {
     var el;
     el = $('#tab-content');
@@ -189,13 +205,12 @@
       scrollTop: el.prop('scrollHeight')
     }, 'fast');
   };
+
   $(function() {
     $('#join').click(function() {
       var url;
       url = prompt('Channel url:');
-      if (channels[url]) {
-        return;
-      }
+      if (channels[url]) return;
       if (location.hash) {
         return location.hash += ',' + url;
       } else {
@@ -206,4 +221,5 @@
     $(window).on('resize', expand);
     return onHash();
   });
+
 }).call(this);

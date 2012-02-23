@@ -34,7 +34,7 @@ my ($info_watcher, $info_json, $botstamp, %bot_info);
 
         sub respond {
             $info_watcher = AE::io $info->getsockopt(ZMQ_FD), 0, sub {
-                while (my $msg = $info->recv) {
+                while(my $msg = $info->recv(ZMQ_NOBLOCK)) {
                     my $respond  = $dispatch{$msg->data};
                     my $response = $respond
                         ? $respond->()

@@ -60,20 +60,25 @@ join = (url) ->
             tbl.append (msgRow r for r in logRows log)
             scroll()
 
-        socket = io.connect(channel.socket)
-        socket.on 'chat', (data) ->
-            el = $('#tab-content')
-            auto = (el.height() + el.scrollTop()) is el.prop('scrollHeight')
-            tbl.append(msgRow data)
-            scroll() if auto
+        if socketInfo = channel.socket
+            socket = io.connect socketInfo.server
+            join   = -> socket.emit 'join', socketInfo.room
+            join()
+            socket.on 'reconnect', join
 
-        $.get channel.archive, (unparsed) ->
-            archives = unparsed.split /\n/
-            archives.pop() # newline at end-of-file
+            socket.on 'chat', (data) ->
+                el = $('#tab-content')
+                auto = (el.height() + el.scrollTop()) is el.prop('scrollHeight')
+                tbl.append(msgRow data)
+                scroll() if auto
+
+        $.getJSON channel.archive, (urls) ->
+            archives = (parseInt(k) for k of urls)
+            archives.sort()
 
             get = ->
                 more.unbind 'click'
-                $.get archives.pop(), (log) ->
+                $.get urls[archives.pop()], (log) ->
                     tbl.prepend (msgRow r for r in logRows log).reverse()
                     updateMore()
 
