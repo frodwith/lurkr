@@ -59,13 +59,14 @@ join = (url) ->
             scroll()
 
         if socketInfo = channel.socket
+            room   = socketInfo.room
             socket = io.connect socketInfo.server
-            rjoin  = -> socket.emit 'join', socketInfo.room
+            rjoin  = -> socket.emit 'join', room
             rjoin()
             socket.on 'reconnect', rjoin
 
             socket.on 'chat', (data) ->
-                return unless data.channel is channel
+                return unless data.channel is room
                 el = $('#tab-content')
                 auto = (el.height() + el.scrollTop()) is el.prop('scrollHeight')
                 tbl.append(msgRow data)
@@ -78,7 +79,7 @@ join = (url) ->
             get = ->
                 more.unbind 'click'
                 $.get urls[archives.pop()], (log) ->
-                    tbl.prepend (msgRow r for r in logRows log).reverse()
+                    tbl.prepend (msgRow r for r in logRows log)
                     updateMore()
 
             updateMore = ->

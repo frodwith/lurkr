@@ -63,7 +63,7 @@
     tbl = el.find('.log');
     tbl.find('caption').text(url);
     return $.getJSON(url, function(channel) {
-      var rjoin, socket, socketInfo;
+      var rjoin, room, socket, socketInfo;
       $.get(channel.current, function(log) {
         var r;
         tbl.append((function() {
@@ -79,15 +79,16 @@
         return scroll();
       });
       if (socketInfo = channel.socket) {
+        room = socketInfo.room;
         socket = io.connect(socketInfo.server);
         rjoin = function() {
-          return socket.emit('join', socketInfo.room);
+          return socket.emit('join', room);
         };
         rjoin();
         socket.on('reconnect', rjoin);
         socket.on('chat', function(data) {
           var auto;
-          if (data.channel !== channel) return;
+          if (data.channel !== room) return;
           el = $('#tab-content');
           auto = (el.height() + el.scrollTop()) === el.prop('scrollHeight');
           tbl.append(msgRow(data));
@@ -109,7 +110,7 @@
           more.unbind('click');
           return $.get(urls[archives.pop()], function(log) {
             var r;
-            tbl.prepend(((function() {
+            tbl.prepend((function() {
               var _i, _len, _ref, _results;
               _ref = logRows(log);
               _results = [];
@@ -118,7 +119,7 @@
                 _results.push(msgRow(r));
               }
               return _results;
-            })()).reverse());
+            })());
             return updateMore();
           });
         };
