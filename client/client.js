@@ -20,21 +20,21 @@
   };
 
   logRows = function(log) {
-    var line, lines, message, result, sender, timestamp, _i, _len, _ref;
-    result = [];
+    var line, lines, message, sender, timestamp, _i, _len, _ref, _results;
     lines = log.split(/\n/);
     lines.pop();
+    _results = [];
     for (_i = 0, _len = lines.length; _i < _len; _i++) {
       line = lines[_i];
       _ref = line.split(/\t/, 3), timestamp = _ref[0], sender = _ref[1], message = _ref[2];
       timestamp = parseInt(timestamp);
-      result.push({
+      _results.push({
         timestamp: timestamp,
         sender: sender,
         message: message
       });
     }
-    return result;
+    return _results;
   };
 
   channels = {};
@@ -63,7 +63,7 @@
     tbl = el.find('.log');
     tbl.find('caption').text(url);
     return $.getJSON(url, function(channel) {
-      var socket, socketInfo;
+      var rjoin, socket, socketInfo;
       $.get(channel.current, function(log) {
         var r;
         tbl.append((function() {
@@ -80,13 +80,14 @@
       });
       if (socketInfo = channel.socket) {
         socket = io.connect(socketInfo.server);
-        join = function() {
+        rjoin = function() {
           return socket.emit('join', socketInfo.room);
         };
-        join();
-        socket.on('reconnect', join);
+        rjoin();
+        socket.on('reconnect', rjoin);
         socket.on('chat', function(data) {
           var auto;
+          if (data.channel !== channel) return;
           el = $('#tab-content');
           auto = (el.height() + el.scrollTop()) === el.prop('scrollHeight');
           tbl.append(msgRow(data));

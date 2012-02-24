@@ -18,15 +18,13 @@ msgRow = ({timestamp, sender, message}) ->
     return tr.get 0
 
 logRows = (log) ->
-    result = []
     lines = log.split /\n/
     lines.pop() # newline at end-of-file
 
     for line in lines
         [timestamp, sender, message] = line.split /\t/, 3
         timestamp = parseInt(timestamp)
-        result.push({timestamp, sender, message})
-    return result
+        {timestamp, sender, message}
 
 channels = {}
 
@@ -62,11 +60,12 @@ join = (url) ->
 
         if socketInfo = channel.socket
             socket = io.connect socketInfo.server
-            join   = -> socket.emit 'join', socketInfo.room
-            join()
-            socket.on 'reconnect', join
+            rjoin  = -> socket.emit 'join', socketInfo.room
+            rjoin()
+            socket.on 'reconnect', rjoin
 
             socket.on 'chat', (data) ->
+                return unless data.channel is channel
                 el = $('#tab-content')
                 auto = (el.height() + el.scrollTop()) is el.prop('scrollHeight')
                 tbl.append(msgRow data)
