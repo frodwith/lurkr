@@ -6,10 +6,21 @@ use AnyEvent::IRC::Client;
 use YAML qw(LoadFile);
 use JSON;
 use ZeroMQ qw(:all);
+use Time::HiRes;
 
 my $config  = LoadFile('config.yaml');
 my %clients;
 my ($info_watcher, $info_json, $botstamp, %bot_info);
+
+# Timestamps are always in MILLISECONDS since the epoch. Why? Because its a
+# reasonable resolution for chat (things happen within the same second all the
+# time, but very rarely within the same millisecond), and because it's the
+# native Javascript Date resolution. Why does that matter? One of our clients
+# is server-side javascript, and our transport is JSON, so it kind of fits.
+sub timestamp {
+    my ($s, $u) = Time::HiRes::gettimeofday();
+    int($s * 1000 + $u/1000);
+}
 
 {
     my $context = ZeroMQ::Context->new;
@@ -18,7 +29,7 @@ my ($info_watcher, $info_json, $botstamp, %bot_info);
         $live->bind($config->{live} || 'tcp://127.0.0.1:6668');
         sub notify {
             my %args = @_;
-            $args{timestamp} = time();
+            $args{timestamp} = timestamp();
             $live->send(encode_json \%args);
         }
     }
@@ -94,7 +105,7 @@ for my $spec (@{ $config->{irc} }) {
     $client->connect($spec->{host}, $port, { nick => $nick });
 }
 
-$botstamp  = encode_json({ timestamp => time() });
+$botstamp  = encode_json({ timestamp => timestamp() });
 $info_json = encode_json(\%bot_info);
 respond();
 
