@@ -11,8 +11,9 @@ headers = (req, res, next) ->
     res.header 'Access-Control-Allow-Origin', '*'
     next()
 
-app = express.createServer headers
-sio = io.listen app
+web = express.createServer headers
+sock = express.createServer()
+sio = io.listen sock
 sio.set 'log level', 1
 sio.sockets.on 'connection', (socket) ->
     socket.on 'join', (room) ->
@@ -20,8 +21,8 @@ sio.sockets.on 'connection', (socket) ->
 
 config = do ->
     o = JSON.parse(fs.readFileSync 'config.json')
-    o.baseUrl = o.baseUrl.replace /\/$/, ''
-    o.socketUrl or= o.baseUrl
+    for kind in ['web', 'sock']
+        o[kind].url = o[kind].url.replace /\/$/, ''
     return o
 
 start = ->
@@ -32,10 +33,11 @@ start = ->
 
     live.setsockopt zmq.ZMQ_SUBSCRIBE, new Buffer ''
     live.connect config.bot.live
-    app.listen(config.web.port or 8080)
+    web.listen(config.web.port or 8080)
+    sock.listen(config.sock.port or 8081)
 
 link_to = (parts...) ->
-    parts.unshift config.baseUrl
+    parts.unshift config.web.url
     parts.join '/'
 
 cacheReply = ({req, res, next, etag, forever, lastModified, send}) ->
@@ -201,7 +203,7 @@ class ChannelInfo extends StringCache
 
             if live
                 chan.socket =
-                    server: config.socketUrl
+                    server: config.sock.url
                     room:   @name
             else
                 chan.channel = 'offline'
@@ -248,13 +250,13 @@ if_chan = (call) ->
             else
                 call name, req, res, next
 
-app.get '/', (req, res, next) ->
+web.get '/', (req, res, next) ->
     new ChannelList().reply req, res, next
 
-app.get '/:chan', if_chan (name, req, res, next) ->
+web.get '/:chan', if_chan (name, req, res, next) ->
     new ChannelInfo(name).reply req, res, next
 
-app.get '/:chan/archive', if_chan (name, req, res, next) ->
+web.get '/:chan/archive', if_chan (name, req, res, next) ->
     new ChannelArchive(name).reply req, res, next
 
 serveLog = (log, archive, req, res, next) ->
@@ -294,15 +296,15 @@ serveLog = (log, archive, req, res, next) ->
                 stream = fs.createReadStream log
                 stream.pipe res
 
-app.get '/:chan/current', if_chan (name, req, res, next) ->
+web.get '/:chan/current', if_chan (name, req, res, next) ->
     p = path.join config.dataDir, name, 'current'
     serveLog p, false, req, res, next
 
-app.get '/:chan/archive/:stamp', if_chan (name, req, res, next) ->
+web.get '/:chan/archive/:stamp', if_chan (name, req, res, next) ->
     p = path.join config.dataDir, name, req.params.stamp + '.gz'
     serveLog p, true, req, res, next
  
-app.get '*', (req, res) ->
+web.get '*', (req, res) ->
     res.contentType 'text'
     res.send 'Not found', 404
 
